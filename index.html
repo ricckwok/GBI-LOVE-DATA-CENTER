@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistem Informasi GBI Love Inhil</title>
+    <meta name="description" content="Sistem Administrasi Terintegrasi Gereja GBI Love Inhil: Multi-role Login, Direct Login Landing, Database Persistence, Generator Arsitektur Laravel (Migration, Eloquent Model, Seeder & SQL), Edit Profil, Pengelolaan KKJ, Master Data Jemaat, COOL, Sakramen, Presensi, dan Otomasi WhatsApp." />
+    <meta property="og:title" content="Sistem Informasi GBI Love Inhil" />
+    <meta property="og:description" content="Sistem Administrasi Terintegrasi Gereja GBI Love Inhil: Multi-role Login, Direct Login Landing, Database Persistence, Generator Arsitektur Laravel (Migration, Eloquent Model, Seeder & SQL), Edit Profil, Pengelolaan KKJ, Master Data Jemaat, COOL, Sakramen, Presensi, dan Otomasi WhatsApp." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      // Ensure window.fetch is writable and has both getter/setter to prevent
+      // "Cannot set property fetch of #<Window> which has only a getter" in iframe sandboxes
+      (function() {
+        try {
+          var _fetch = window.fetch;
+          if (typeof _fetch === 'function') {
+            var currentFetch = _fetch;
+            Object.defineProperty(window, 'fetch', {
+              get: function() {
+                return currentFetch;
+              },
+              set: function(val) {
+                currentFetch = val;
+              },
+              configurable: true,
+              enumerable: true
+            });
+          }
+        } catch (e) {
+          // Ignore if unable to redefine
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
