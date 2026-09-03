@@ -3,6 +3,7 @@ import { useChurch } from '../../context/ChurchContext';
 import { UserRole, ROLE_DEFINITIONS } from '../../types';
 import { UserManagementSection } from '../admin/UserManagementSection';
 import { LaravelDatabaseHub } from '../database/LaravelDatabaseHub';
+import { RailwayDeployTab } from '../sync/RailwayDeployTab';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { GBILogo, GBI_LOGO_SVG_DATA_URL } from '../common/GBILogo';
 import {
@@ -25,7 +26,14 @@ import {
   Sparkles,
   Users,
   Camera,
-  Layers
+  Layers,
+  FolderSync,
+  HardDrive,
+  Unlink,
+  Server,
+  RefreshCw,
+  FileJson,
+  Cloud
 } from 'lucide-react';
 
 const AVATAR_PRESETS = [
@@ -43,13 +51,35 @@ export const SettingsView: React.FC = () => {
     updateChurchSettings,
     currentUser,
     updateUser,
-    resetToDemoData,
-    exportDatabaseJSON,
-    importDatabaseJSON,
+    resetAllData,
+    downloadDatabaseJSON,
+    importFullDatabase,
+    isPCFileLinked,
+    pcFileName,
+    pcFileLastSaved,
+    isAutoSaveToPC,
+    setIsAutoSaveToPC,
+    localApiUrl,
+    setLocalApiUrl,
+    isLocalApiConnected,
+    localApiLastSync,
+    isAutoSyncLocalApi,
+    setIsAutoSyncLocalApi,
+    linkPCFile,
+    createAndLinkNewPCFile,
+    unlinkPCFile,
+    saveToLinkedPCFile,
+    loadFromLinkedPCFile,
+    testLocalApiConnection,
+    pushToLocalApi,
+    pullFromLocalApi,
     showToast
   } = useChurch();
 
-  const [activeTab, setActiveTab] = useState<'account' | 'users_rbac' | 'laravel' | 'profile' | 'database'>('account');
+  const [activeTab, setActiveTab] = useState<'account' | 'users_rbac' | 'railway' | 'laravel' | 'profile' | 'database'>('account');
+  const [testingApi, setTestingApi] = useState(false);
+  const [syncingApi, setSyncingApi] = useState(false);
+  const [apiUrlInput, setApiUrlInput] = useState(localApiUrl);
 
   // Account Profile fields
   const [accountFullName, setAccountFullName] = useState(currentUser.fullName);
@@ -152,7 +182,7 @@ export const SettingsView: React.FC = () => {
     reader.onload = event => {
       const content = event.target?.result as string;
       if (content) {
-        importDatabaseJSON(content);
+        importFullDatabase(content);
       }
     };
     reader.readAsText(file);
@@ -209,6 +239,19 @@ export const SettingsView: React.FC = () => {
               Super Admin
             </span>
           )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('railway')}
+          className={`px-4 py-2 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center space-x-2 ${
+            activeTab === 'railway' ? 'bg-purple-700 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Cloud className="w-4 h-4" />
+          <span>Deploy Railway Cloud</span>
+          <span className="px-1.5 py-0.2 bg-purple-100 text-purple-800 text-[9px] font-black rounded-sm uppercase">
+            Online PC & HP
+          </span>
         </button>
 
         <button
@@ -463,6 +506,11 @@ export const SettingsView: React.FC = () => {
         <UserManagementSection />
       )}
 
+      {/* Tab: Railway Cloud Deployment */}
+      {activeTab === 'railway' && (
+        <RailwayDeployTab />
+      )}
+
       {/* Tab 3: Arsitektur Basis Data Laravel (SQL, Migration, Model, Seeder, API) */}
       {activeTab === 'laravel' && (
         <LaravelDatabaseHub />
@@ -607,64 +655,272 @@ export const SettingsView: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 4: Database Backup / Restore */}
+      {/* Tab 4: Database Backup, Live PC Link & Restore */}
       {activeTab === 'database' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 max-w-2xl space-y-6">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 max-w-3xl space-y-6">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Manajemen Cadangan & Pemulihan Data (Database Storage)</h3>
+            <div className="flex items-center space-x-2">
+              <h3 className="text-base font-bold text-slate-900">Manajemen Database & Link Data PC Terpadu</h3>
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-bold rounded-full border border-blue-200">
+                Data Persistence
+              </span>
+            </div>
             <p className="text-xs text-slate-500 mt-1">
-              Simpan seluruh database lokal (KKJ, Master Jemaat, COOL, Sakramen, Pengerja, Presensi, WA Logs) dalam format JSON terenkripsi.
+              Hubungkan data aplikasi langsung ke hard disk atau server di komputer (PC) Anda agar data selalu tersinkronisasi dan tidak berbeda.
             </p>
           </div>
 
-          <div className="space-y-4">
-            {/* Export */}
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
-              <div>
-                <h4 className="font-bold text-slate-900 text-xs">Ekspor Backup Database JSON</h4>
-                <p className="text-[11px] text-slate-500">Unduh snapshot lengkap sistem saat ini.</p>
+          {/* Section 1: Direct PC File Link */}
+          <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className={`p-2.5 rounded-xl text-white shadow-xs ${isPCFileLinked ? 'bg-emerald-600' : 'bg-blue-600'}`}>
+                  <FolderSync className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900">
+                    1. Tautkan Langsung ke File di PC (Native Live Link)
+                  </h4>
+                  <p className="text-[11px] text-slate-500">
+                    Aplikasi menulis langsung ke file JSON di folder komputer Anda setiap kali data diperbarui.
+                  </p>
+                </div>
               </div>
-              <button
-                onClick={exportDatabaseJSON}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 cursor-pointer shadow-xs"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Unduh JSON</span>
-              </button>
+
+              {isPCFileLinked && (
+                <button
+                  onClick={unlinkPCFile}
+                  className="px-3 py-1.5 bg-white border border-red-200 text-red-700 hover:bg-red-50 text-xs font-bold rounded-xl flex items-center space-x-1.5 cursor-pointer shadow-2xs transition-colors"
+                >
+                  <Unlink className="w-3.5 h-3.5" />
+                  <span>Lepas Tautan</span>
+                </button>
+              )}
             </div>
 
-            {/* Import */}
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
-              <div>
-                <h4 className="font-bold text-slate-900 text-xs">Pulihkan Database dari File JSON</h4>
-                <p className="text-[11px] text-slate-500">Restore snapshot data yang telah dicadangkan sebelumnya.</p>
+            {isPCFileLinked ? (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
+                      Status File Terhubung:
+                    </span>
+                    <span className="text-sm font-bold text-emerald-950 font-mono">
+                      {pcFileName}
+                    </span>
+                  </div>
+                  {pcFileLastSaved && (
+                    <span className="text-[11px] text-emerald-700 font-medium bg-white px-2.5 py-1 rounded-lg border border-emerald-200">
+                      Tersimpan: {pcFileLastSaved}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-emerald-200/60">
+                  <span className="text-xs font-medium text-emerald-900">
+                    Simpan Otomatis Realtime ke File PC (Auto-Save)
+                  </span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isAutoSaveToPC}
+                      onChange={e => setIsAutoSaveToPC(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-emerald-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-emerald-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <button
+                    onClick={() => saveToLinkedPCFile()}
+                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center space-x-1 cursor-pointer shadow-2xs"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Simpan ke PC Sekarang</span>
+                  </button>
+                  <button
+                    onClick={() => loadFromLinkedPCFile()}
+                    className="px-3.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg flex items-center space-x-1 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Muat Ulang dari PC</span>
+                  </button>
+                </div>
               </div>
-              <label className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 cursor-pointer shadow-xs">
-                <Upload className="w-3.5 h-3.5" />
-                <span>Pilih File Backup</span>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => linkPCFile()}
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl flex items-center space-x-2 shadow-xs cursor-pointer"
+                >
+                  <FolderSync className="w-4 h-4" />
+                  <span>Pilih & Tautkan File Database di PC (.json)</span>
+                </button>
+                <button
+                  onClick={() => createAndLinkNewPCFile()}
+                  className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl flex items-center space-x-2 shadow-xs cursor-pointer"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Buat File Database Baru di PC</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Localhost REST API Connector */}
+          <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50 space-y-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2.5 bg-purple-600 text-white rounded-xl shadow-xs">
+                <Server className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-900">
+                  2. Konektor REST API / Server Lokal PC (Localhost)
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Hubungkan dengan server lokal seperti PHP, Laravel, atau Node.js yang berjalan di PC Anda.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-white rounded-xl border border-slate-200 space-y-3">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileImport}
-                  className="hidden"
+                  type="text"
+                  value={apiUrlInput}
+                  onChange={e => setApiUrlInput(e.target.value)}
+                  placeholder="http://localhost:8000/api"
+                  className="flex-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:bg-white"
                 />
-              </label>
+                <button
+                  onClick={async () => {
+                    setTestingApi(true);
+                    setLocalApiUrl(apiUrlInput);
+                    await testLocalApiConnection(apiUrlInput);
+                    setTestingApi(false);
+                  }}
+                  disabled={testingApi}
+                  className="px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg flex items-center justify-center space-x-1 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${testingApi ? 'animate-spin' : ''}`} />
+                  <span>{testingApi ? 'Menguji...' : 'Uji Koneksi'}</span>
+                </button>
+              </div>
+
+              {isLocalApiConnected && (
+                <div className="flex items-center justify-between text-xs text-emerald-800 bg-emerald-50 p-2.5 rounded-lg border border-emerald-200">
+                  <div className="flex items-center space-x-1.5 font-bold">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Terhubung ke Server Localhost PC</span>
+                  </div>
+                  {localApiLastSync && <span className="text-[11px] text-emerald-700">Sinkron: {localApiLastSync}</span>}
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  onClick={async () => {
+                    setSyncingApi(true);
+                    await pushToLocalApi();
+                    setSyncingApi(false);
+                  }}
+                  disabled={syncingApi}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg flex items-center space-x-1 cursor-pointer border border-slate-200"
+                >
+                  <Upload className="w-3 h-3 text-blue-600" />
+                  <span>Kirim Data ke PC (Push)</span>
+                </button>
+
+                <button
+                  onClick={async () => {
+                    setSyncingApi(true);
+                    await pullFromLocalApi();
+                    setSyncingApi(false);
+                  }}
+                  disabled={syncingApi}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg flex items-center space-x-1 cursor-pointer border border-slate-200"
+                >
+                  <Download className="w-3 h-3 text-emerald-600" />
+                  <span>Tarik Data dari PC (Pull)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Manual Export & Import JSON */}
+          <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50 space-y-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2.5 bg-slate-800 text-white rounded-xl shadow-xs">
+                <FileJson className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-900">
+                  3. Ekspor & Impor File Cadangan Manual (JSON)
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Unduh snapshot manual atau unggah file database JSON dari penyimpanan komputer Anda.
+                </p>
+              </div>
             </div>
 
-            {/* Reset to Seed */}
-            <div className="p-4 bg-red-50/60 rounded-2xl border border-red-200 flex items-center justify-between">
-              <div>
-                <h4 className="font-bold text-red-900 text-xs">Muat Ulang Data Sampel Default</h4>
-                <p className="text-[11px] text-red-600">Reset database kembali ke contoh data awal GBI Love Inhil.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-3.5 bg-white rounded-xl border border-slate-200 flex flex-col justify-between space-y-2">
+                <div>
+                  <h5 className="text-xs font-bold text-slate-900">Ekspor Backup JSON</h5>
+                  <p className="text-[11px] text-slate-500">Unduh file database lengkap.</p>
+                </div>
+                <button
+                  onClick={downloadDatabaseJSON}
+                  className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg flex items-center justify-center space-x-1.5 cursor-pointer shadow-xs"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh File JSON</span>
+                </button>
               </div>
-              <button
-                onClick={() => setIsResetConfirmOpen(true)}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 cursor-pointer shadow-xs"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset Data Demo</span>
-              </button>
+
+              <div className="p-3.5 bg-white rounded-xl border border-slate-200 flex flex-col justify-between space-y-2">
+                <div>
+                  <h5 className="text-xs font-bold text-slate-900">Pulihkan File JSON</h5>
+                  <p className="text-[11px] text-slate-500">Restore file backup dari PC.</p>
+                </div>
+                <label className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg flex items-center justify-center space-x-1.5 cursor-pointer shadow-xs">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Pilih File Backup PC</span>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = event => {
+                        const content = event.target?.result as string;
+                        if (content) importFullDatabase(content);
+                      };
+                      reader.readAsText(file);
+                      e.target.value = '';
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
             </div>
+          </div>
+
+          {/* Section 4: Reset Demo Data */}
+          <div className="p-4 bg-red-50/60 rounded-2xl border border-red-200 flex items-center justify-between">
+            <div>
+              <h4 className="font-bold text-red-900 text-xs">Muat Ulang Data Sampel Default</h4>
+              <p className="text-[11px] text-red-600">Reset database kembali ke contoh data awal GBI Love Inhil.</p>
+            </div>
+            <button
+              onClick={() => setIsResetConfirmOpen(true)}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 cursor-pointer shadow-xs"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Data Demo</span>
+            </button>
           </div>
         </div>
       )}
@@ -677,7 +933,7 @@ export const SettingsView: React.FC = () => {
         confirmLabel="Ya, Reset Sekarang"
         isDanger={true}
         onConfirm={() => {
-          resetToDemoData();
+          resetAllData();
           setIsResetConfirmOpen(false);
         }}
         onCancel={() => setIsResetConfirmOpen(false)}

@@ -1,7 +1,21 @@
 import React from 'react';
 import { useChurch } from '../../context/ChurchContext';
 import { UserRole, ROLE_DEFINITIONS } from '../../types';
-import { Menu, Search, Shield, ShieldCheck, RefreshCw, Bell, Cake, UserCog, User as UserIcon, LogOut } from 'lucide-react';
+import {
+  Menu,
+  Search,
+  Shield,
+  ShieldCheck,
+  RefreshCw,
+  Bell,
+  Cake,
+  UserCog,
+  User as UserIcon,
+  LogOut,
+  FolderSync,
+  HardDrive,
+  CheckCircle2
+} from 'lucide-react';
 import { NavTab } from './Sidebar';
 
 interface TopbarProps {
@@ -11,6 +25,7 @@ interface TopbarProps {
   onOpenGlobalSearch: () => void;
   onOpenBirthdayNotification?: () => void;
   onOpenEditProfile?: () => void;
+  onOpenPCSync?: () => void;
 }
 
 export const Topbar: React.FC<TopbarProps> = ({
@@ -19,9 +34,20 @@ export const Topbar: React.FC<TopbarProps> = ({
   onOpenMobileMenu,
   onOpenGlobalSearch,
   onOpenBirthdayNotification,
-  onOpenEditProfile
+  onOpenEditProfile,
+  onOpenPCSync
 }) => {
-  const { currentUser, switchRole, logout, waSettings, stats, resetAllData } = useChurch();
+  const {
+    currentUser,
+    switchRole,
+    logout,
+    waSettings,
+    stats,
+    resetAllData,
+    isPCFileLinked,
+    pcFileName,
+    isLocalApiConnected
+  } = useChurch();
 
   const getTitle = () => {
     switch (activeTab) {
@@ -77,6 +103,39 @@ export const Topbar: React.FC<TopbarProps> = ({
 
       {/* Right section: System Badges, Quick Search, Role Switcher, Profile Pill */}
       <div className="flex items-center space-x-2 sm:space-x-3">
+        {/* PC Data Link & Sync Button */}
+        <button
+          onClick={onOpenPCSync || (() => setActiveTab('settings'))}
+          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer border shadow-2xs ${
+            isPCFileLinked
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+              : isLocalApiConnected
+              ? 'bg-blue-50 text-blue-800 border-blue-300 hover:bg-blue-100'
+              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+          }`}
+          title="Sinkronisasi & Tautkan Data ke Komputer (PC)"
+        >
+          {isPCFileLinked ? (
+            <>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <FolderSync className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="hidden sm:inline">File PC:</span>
+              <span className="max-w-[80px] sm:max-w-[120px] truncate">{pcFileName || 'Terhubung'}</span>
+            </>
+          ) : isLocalApiConnected ? (
+            <>
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              <HardDrive className="w-3.5 h-3.5 text-blue-600" />
+              <span className="hidden sm:inline">Localhost Aktif</span>
+            </>
+          ) : (
+            <>
+              <HardDrive className="w-3.5 h-3.5 text-slate-500" />
+              <span>Link Data PC</span>
+            </>
+          )}
+        </button>
+
         {/* Global Search Button */}
         <button
           onClick={onOpenGlobalSearch}

@@ -67,7 +67,7 @@ export const UserManagementSection: React.FC = () => {
     setFormFullName('');
     setFormUsername('');
     setFormEmail('');
-    setFormPassword('gbi12345');
+    setFormPassword('admin123');
     setFormRole('ADMINISTRATOR');
     setFormIsActive(true);
     setShowPassword(false);
@@ -109,7 +109,7 @@ export const UserManagementSection: React.FC = () => {
       fullName: formFullName.trim(),
       username: cleanUsername,
       email: formEmail.trim().toLowerCase() || `${cleanUsername}@gbiloveinhil.org`,
-      password: formPassword || 'gbi12345',
+      password: formPassword || 'admin123',
       role: formRole,
       isActive: formIsActive
     });

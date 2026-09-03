@@ -29,6 +29,7 @@ import { WhatsAppView } from './components/whatsapp/WhatsAppView';
 import { ReportsView } from './components/reports/ReportsView';
 import { SettingsView } from './components/settings/SettingsView';
 import { GlobalSearchModal } from './components/search/GlobalSearchModal';
+import { PCSyncModal } from './components/sync/PCSyncModal';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, logout } = useChurch();
@@ -37,6 +38,7 @@ const AppContent: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isBirthdayNotificationOpen, setIsBirthdayNotificationOpen] = useState(false);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isPCSyncOpen, setIsPCSyncOpen] = useState(false);
 
   // Global Keyboard Shortcut (⌘K or Ctrl+K)
   useEffect(() => {
@@ -87,6 +89,7 @@ const AppContent: React.FC = () => {
           onOpenGlobalSearch={() => setIsSearchOpen(true)}
           onOpenBirthdayNotification={() => setIsBirthdayNotificationOpen(true)}
           onOpenEditProfile={() => setIsEditProfileOpen(true)}
+          onOpenPCSync={() => setIsPCSyncOpen(true)}
         />
 
         {/* Scrollable View Canvas */}
@@ -109,6 +112,12 @@ const AppContent: React.FC = () => {
           {activeTab === 'settings' && <SettingsView />}
         </main>
       </div>
+
+      {/* PC Data Link & Sync Modal */}
+      <PCSyncModal
+        isOpen={isPCSyncOpen}
+        onClose={() => setIsPCSyncOpen(false)}
+      />
 
       {/* Global Search Spotlight */}
       <GlobalSearchModal
